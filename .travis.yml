@@ -31,20 +31,13 @@ script:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export OSNAME="macosx"; fi
   - export ARCH="amd64"
   - mv "bin/choosenim${EXT}" "bin/choosenim-${VERSION}_${OSNAME}_${ARCH}_debug${EXT}"
+  - nimble build -d:release
+  - mv "bin/choosenim${EXT}" "bin/choosenim-${VERSION}_${OSNAME}_${ARCH}${EXT}"
+  - ls -l bin
+  - sed -e s@chooseNimVersion.*@chooseNimVersion\*\ =\ \"0.0.0\"@ src/choosenimpkg/common.nim > src/choosenimpkg/common.nim #build version change for update test.
+  - nimble build -d:release
+  - ./bin/choosenim${EXT} update self --debug
 
-jobs:
-  include:
-    - stage: "UITest"                # naming the Tests stage
-      name: "choosenim update self"            # names the first Tests stage job
-      script: 
-        - sed -e s@chooseNimVersion.*@chooseNimVersion\*\ =\ \"0.0.0\"@ src/choosenimpkg/common.nim > src/choosenimpkg/common.nim #build version change for update test.
-        - nimble build -d:release
-        - ./bin/choosenim${EXT} update self --debug
-    - stage: "release build"
-      - nimble build -d:release
-      - mv "bin/choosenim${EXT}" "bin/choosenim-${VERSION}_${OSNAME}_${ARCH}${EXT}"
-      - ls -l bin
-    
 notifications:
   irc: "chat.freenode.net#nimbuild"
 
