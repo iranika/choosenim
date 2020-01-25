@@ -46,5 +46,5 @@ deploy:
   file: bin/*
   skip_cleanup: true
   on:
-    repo: dom96/choosenim
+    repo: iranika/choosenim
     tags: true
