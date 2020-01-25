@@ -48,3 +48,4 @@ deploy:
   on:
     repo: iranika/choosenim
     tags: true
+
