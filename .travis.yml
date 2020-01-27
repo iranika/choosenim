@@ -19,27 +19,11 @@ install:
   - curl https://gist.github.com/genotrance/fb53504a4fba88bc5201d3783df5c522/raw/3122ece117489afcc9008b63d6278d97074b8f2c/travis.sh -LsSf -o travis.sh
   - source travis.sh
 
-stage: "build and unittest"
 script:
   - nimble install -y -d
   - nim c src/choosenim
   - nimble test
   - yes | choosenim stable # Workaround tester overwriting our Nimble install.
-
-stage: "running ui test"
-name: "choosenim switch version" #switch version
-script:
-  - ./bin/choosenim versions
-  - ./bin/choosenim 1.0.0
-  - ./bin/choosenim stable
-  - ./bin/choosenim \#head
-name: "choosenim update self"
-  - sed -e s@chooseNimVersion.*@chooseNimVersion\*\ =\ \"0.0.0\"@ src/choosenimpkg/common.nim > ./src/choosenimpkg/common.nim #build version change for update test.
-  - nim c src/choosenim
-  - ./choosenim update self
-stage: "release"
-name: "release build"
-script:
   - export VERSION="$(./bin/choosenim --version | cut -f2,2 -d' ' | sed 's/v//')"
   - export EXT=""
   - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then export EXT=".exe"; fi
@@ -50,12 +34,11 @@ script:
   - nimble build -d:release
   - mv "bin/choosenim${EXT}" "bin/choosenim-${VERSION}_${OSNAME}_${ARCH}${EXT}"
   - ls -l bin
-  - nimble build -d:release
-  - ./bin/choosenim${EXT} update self --debug
+  - sed -e s@chooseNimVersion.*@chooseNimVersion\*\ =\ \"0.0.0\"@ src/choosenimpkg/common.nim > src/choosenimpkg/common.nim #build version change for update test.
   - nimble build -d:release
   - ./bin/choosenim${EXT} update self --debug
 
-  notifications:
+notifications:
   irc: "chat.freenode.net#nimbuild"
 
 deploy:
