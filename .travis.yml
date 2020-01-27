@@ -44,7 +44,7 @@ script:
   - choosenim 0.20.0  #switch test.
   - choosenim show    #
   - sed -e s@chooseNimVersion.*@chooseNimVersion\*\ =\ \"0.4.0\"@ src/choosenimpkg/common.nim | tee src/choosenimpkg/common.nim #build version change for update test.
-  - nimble build -d:release
+  - nimble build
   - which choosenim
   - cp -pr bin/choosenim${EXT} ~/.nimble/bin/
   - choosenim --version
