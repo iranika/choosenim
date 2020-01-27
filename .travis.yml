@@ -46,9 +46,9 @@ after_success:
   #- sed -e s@chooseNimVersion.*@chooseNimVersion\*\ =\ \"0.4.0\"@ src/choosenimpkg/common.nim
   - sed -e s@chooseNimVersion.*@chooseNimVersion\*\ =\ \"0.4.0\"@ src/choosenimpkg/common.nim | tee src/choosenimpkg/common.nim #build version change for update test.
   #- cat src/choosenimpkg/common.nim
-  - nimble build -d:release
-  - ./bin/choosenim${EXT} --version
-  - ./bin/choosenim${EXT} update self --debug
+  - nimble install -y
+  - choosenim --version
+  - choosenim update self --debug
 
 after_failure: 
   - "cat ~/build/iranika/choosenim/src/choosenimpkg/common.nim"
