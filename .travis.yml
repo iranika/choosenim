@@ -37,7 +37,7 @@ script:
   - nimble build -d:release
   - ls -l bin
   - mkdir artifact
-  - cp -pr bin/* artifact/ #copy artifact for deploy.
+  #- cp -pr bin/* artifact/ #copy artifact for deploy.
 #after_success:
   - echo "regression test"
   - choosenim --version
