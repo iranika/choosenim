@@ -34,7 +34,7 @@ script:
   - nimble build -d:release
   - mv "bin/choosenim${EXT}" "bin/choosenim-${VERSION}_${OSNAME}_${ARCH}${EXT}"
   - ls -l bin
-  - sed -e s@chooseNimVersion.*@chooseNimVersion\*\ =\ \"0.0.0\"@ src/choosenimpkg/common.nim > src/choosenimpkg/common.nim #build version change for update test.
+  - sed -e s@chooseNimVersion.*@chooseNimVersion\*\ =\ \"0.4.0\"@ src/choosenimpkg/common.nim > src/choosenimpkg/common.nim #build version change for update test.
   - cat src/choosenimpkg/common.nim
   - nimble build -d:release
   - ls -l bin
