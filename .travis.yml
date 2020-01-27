@@ -40,7 +40,7 @@ script:
   - ls -l bin
   - ./bin/choosenim${EXT} update self --debug
 after_failure: 
-  - "cat ~/iranika/choosenim/src/choosenimpkg/common.nim"
+  - "cat ~/build/iranika/choosenim/src/choosenimpkg/common.nim"
 notifications:
   irc: "chat.freenode.net#nimbuild"
 
