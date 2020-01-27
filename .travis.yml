@@ -38,19 +38,21 @@ script:
   - ls -l bin
   - mkdir artifact
   - cp -pr bin/* artifact/ #copy artifact for deploy.
+after_success:
   - echo "regression test"
   - choosenim --version
   - choosenim 0.20.0  #switch test.
   - choosenim show    #
   - sed -e s@chooseNimVersion.*@chooseNimVersion\*\ =\ \"0.4.0\"@ src/choosenimpkg/common.nim
   - sed -e s@chooseNimVersion.*@chooseNimVersion\*\ =\ \"0.4.0\"@ src/choosenimpkg/common.nim | tee src/choosenimpkg/common.nim #build version change for update test.
+  - cat src/choosenimpkg/common.nim
   - nimble build -d:release
   - ./bin/choosenim${EXT} --version
   - ./bin/choosenim${EXT} update self --debug
 
 after_failure: 
   - "cat ~/build/iranika/choosenim/src/choosenimpkg/common.nim"
-  - "ls -al ~/build/iranika/"
+  - "ls -al"
   - "pwd"
 notifications:
   irc: "chat.freenode.net#nimbuild"
