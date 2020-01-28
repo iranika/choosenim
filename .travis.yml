@@ -34,10 +34,9 @@ script:
   - nimble build -d:release
   - mv "bin/choosenim${EXT}" "bin/choosenim-${VERSION}_${OSNAME}_${ARCH}${EXT}"
   - ls -l bin
-  - nimble build -d:release
-  - ls -l bin
   - mkdir artifact
   - cp -pr bin/* artifact/ #Copy release binary to artifact dir for deploy.
+  - ls -l artifact
 #after_success:
   - echo "Build test end."
   - echo "Regression test start."
