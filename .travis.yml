@@ -1,7 +1,7 @@
 os:
   - linux
-#  - osx
-#  - windows
+  - osx
+  - windows
 
 language: c
 
@@ -39,15 +39,15 @@ script:
   - mkdir artifact
   #- cp -pr bin/* artifact/ #copy artifact for deploy.
 #after_success:
-  - sed -e s@chooseNimVersion.*@chooseNimVersion\*\ =\ \"0.4.0\"@ src/choosenimpkg/common.nim
-  - sed -e s@chooseNimVersion.*@chooseNimVersion\*\ =\ \"0.4.0\"@ src/choosenimpkg/common.nim | tee src/choosenimpkg/common.nim #build version change for update test.
-  - cat src/choosenimpkg/common.nim
   - echo "regression test"
   - choosenim --version
   - choosenim 0.20.0  #switch test.
   - choosenim show    #
   - choosenim stable
   - ls -l
+  - sed -i -e s@chooseNimVersion.*@chooseNimVersion\*\ =\ \"0.4.0\"@ src/choosenimpkg/common.nim
+  #- sed -e s@chooseNimVersion.*@chooseNimVersion\*\ =\ \"0.4.0\"@ src/choosenimpkg/common.nim | tee src/choosenimpkg/common.nim #build version change for update test.
+  - cat src/choosenimpkg/common.nim
   #- nim c src/choosenim
   - nimble build -d:release
   - which choosenim
