@@ -54,6 +54,7 @@ script:
   - cp -pr bin/choosenim${EXT} ~/.nimble/bin/
   - choosenim --version
   - choosenim update self --debug
+  - choosenim --version
 
 after_failure: 
   - "cat ~/build/iranika/choosenim/src/choosenimpkg/common.nim"
