@@ -39,16 +39,16 @@ script:
   - mkdir artifact
   #- cp -pr bin/* artifact/ #copy artifact for deploy.
 #after_success:
+  - sed -e s@chooseNimVersion.*@chooseNimVersion\*\ =\ \"0.4.0\"@ src/choosenimpkg/common.nim
+  - sed -e s@chooseNimVersion.*@chooseNimVersion\*\ =\ \"0.4.0\"@ src/choosenimpkg/common.nim | tee src/choosenimpkg/common.nim #build version change for update test.
+  - cat src/choosenimpkg/common.nim
   - echo "regression test"
   - choosenim --version
   - choosenim 0.20.0  #switch test.
   - choosenim show    #
-  - sed -e s@chooseNimVersion.*@chooseNimVersion\*\ =\ \"0.4.0\"@ src/choosenimpkg/common.nim
-  - sed -e s@chooseNimVersion.*@chooseNimVersion\*\ =\ \"0.4.0\"@ src/choosenimpkg/common.nim | tee src/choosenimpkg/common.nim #build version change for update test.
-  - cat src/choosenimpkg/common.nim
+  - choosenim stable
   - ls -l
   #- nim c src/choosenim
-  - choosenim stable
   - nimble build -d:release
   - which choosenim
   - cp -pr bin/choosenim${EXT} ~/.nimble/bin/
