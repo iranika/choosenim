@@ -47,7 +47,8 @@ script:
   - sed -e s@chooseNimVersion.*@chooseNimVersion\*\ =\ \"0.4.0\"@ src/choosenimpkg/common.nim|tee src/choosenimpkg/common.nim #build version change for update test.
   - cat src/choosenimpkg/common.nim
   - ls -l
-  - nim c src/choosenim
+  #- nim c src/choosenim
+  - cat /home/travis/build/iranika/choosenim/choosenim.nimble
   - nimble build -d:release
   - which choosenim
   - cp -pr bin/choosenim${EXT} ~/.nimble/bin/
