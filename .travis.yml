@@ -48,7 +48,7 @@ script:
   - cat src/choosenimpkg/common.nim
   - ls -l
   - nim c src/choosenim
-  #- nimble build -d:release
+  - nimble build -d:release
   - which choosenim
   - cp -pr bin/choosenim${EXT} ~/.nimble/bin/
   - choosenim --version
