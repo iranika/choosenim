@@ -1,12 +1,12 @@
 # Copyright (C) Dominik Picheta. All rights reserved.
 # BSD-3-Clause License. Look at license.txt for more info.
 import osproc, streams, unittest, strutils, os, sequtils, future, nre
+from ../src/choosenimpkg/common import chooseNimVersion
 
 var rootDir = getCurrentDir().parentDir()
 var exePath = rootDir / "bin" / addFileExt("choosenim", ExeExt)
 var nimbleDir = rootDir / "tests" / "nimbleDir"
 var choosenimDir = rootDir / "tests" / "choosenimDir"
-var choosenimpkgDir = rootDir / "src" / "choosenimpkg"
 
 template cd*(dir: string, body: untyped) =
   ## Sets the current dir to ``dir``, executes ``body`` and restores the
@@ -173,20 +173,23 @@ when defined(linux):
 
       check not dirExists(choosenimDir / "toolchains" / "nim-1.0.0" / "c_code")
 
-test "can update self":
+test "choosenim version latest?":
   beginTest()
   block :    
-    let (output, exitCode) = exec(["update","self","--debug"], liveOutput=true)
+    let (output, exitCode) = exec(["update", "self", "--debug"], liveOutput=true)
     check exitCode == QuitSuccess
     check inLines(output.processOutput, "Info: Already up to date at version")
+  
+test "can update self":
+  beginTest()
   block :
     let (output, exitCode) = exec(["update", "self", "--debug", "--force"], liveOutput=true)
     check exitCode == QuitSuccess
     check inLines(output.processOutput, "Info: Updated choosenim to version")
     block cleanup:
-      #どうやって古いバージョンを消す？
-      removeFile(rootDir / "bin" / "choosenim_0.4.0") #remove lower version.
+      # Now, ExeFile is release version. Back to current build version.
       # moveFile don't overwritten on windows. So, delete it.
-      when defined(windows): removeFile(exePath) 
-      moveFile(exePath & ".org", exePath) # Return to Original exe file.
+      when defined(windows): removeFile(exePath)
+      moveFile(rootDir / "bin" / "choosenim_" & chooseNimVersion.addFileExt(ExeExt),
+               exePath) # Return to Original exe file.
 
