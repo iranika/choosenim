@@ -175,29 +175,16 @@ when defined(linux):
 
 test "can update self":
   beginTest()
-  var (output, exitCode) = exec(["update","self","--debug"], liveOutput=true)
-  check exitCode == QuitSuccess
-  check inLines(output.processOutput, "Info: Already up to date at version")
-
-  cd choosenimpkgDir:
-    const commonFile = "common.nim"
-    const commonFileOriginal = "common.nim.org"
-    copyFile(commonFile, commonFileOriginal)
-    writeFile(commonFile, readFile(commonFile).replace(re"chooseNimVersion.*",
-                                                  "chooseNimVersion* = \"0.4.0\""))
-    cd rootDir:
-      moveFile(exePath, exePath & ".org") # rename Original exe file.
-      (output, exitCode) = exec("build", exe="nimble", global=false, liveOutput=true)
-      check exitCode == QuitSuccess
-    # moveFile don't overwritten on windows. So, delete it.
-    when defined(windows): removeFile(commonFile)
-    moveFile(commonFileOriginal, commonFile)
-    
-    (output, exitCode) = exec(["update", "self", "--debug"], liveOutput=true)
+  block :    
+    let (output, exitCode) = exec(["update","self","--debug"], liveOutput=true)
+    check exitCode == QuitSuccess
+    check inLines(output.processOutput, "Info: Already up to date at version")
+  block :
+    let (output, exitCode) = exec(["update", "self", "--debug", "--force"], liveOutput=true)
     check exitCode == QuitSuccess
     check inLines(output.processOutput, "Info: Updated choosenim to version")
-
     block cleanup:
+      #どうやって古いバージョンを消す？
       removeFile(rootDir / "bin" / "choosenim_0.4.0") #remove lower version.
       # moveFile don't overwritten on windows. So, delete it.
       when defined(windows): removeFile(exePath) 

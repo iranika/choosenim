@@ -71,13 +71,12 @@ proc choose(params: CliParams) =
 
 proc updateSelf(params: CliParams) =
   display("Updating", "choosenim", priority = HighPriority)
-
   let version = getChannelVersion("self", params, live=true).newVersion
-  if version <= chooseNimVersion.newVersion:
+  if not params.force and version <= chooseNimVersion.newVersion:
     display("Info:", "Already up to date at version " & chooseNimVersion,
             Success, HighPriority)
     return
-
+  
   # https://stackoverflow.com/a/9163044/492186
   let tag = "v" & $version
   let filename = "choosenim-" & $version & "_" & hostOS & "_" & hostCPU.addFileExt(ExeExt)
