@@ -173,15 +173,13 @@ when defined(linux):
 
       check not dirExists(choosenimDir / "toolchains" / "nim-1.0.0" / "c_code")
 
-test "choosenim version latest?":
+test "can update self":
   beginTest()
-  block :    
+  block :
     let (output, exitCode) = exec(["update", "self", "--debug"], liveOutput=true)
     check exitCode == QuitSuccess
     check inLines(output.processOutput, "Info: Already up to date at version")
-  
-test "can update self":
-  beginTest()
+
   block :
     let (output, exitCode) = exec(["update", "self", "--debug", "--force"], liveOutput=true)
     check exitCode == QuitSuccess
@@ -192,4 +190,3 @@ test "can update self":
       when defined(windows): removeFile(exePath)
       moveFile(rootDir / "bin" / "choosenim_" & chooseNimVersion.addFileExt(ExeExt),
                exePath)
-
