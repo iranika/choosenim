@@ -191,5 +191,5 @@ test "can update self":
       # moveFile don't overwritten on windows. So, delete it.
       when defined(windows): removeFile(exePath)
       moveFile(rootDir / "bin" / "choosenim_" & chooseNimVersion.addFileExt(ExeExt),
-               exePath) # Return to Original exe file.
+               exePath)
 
