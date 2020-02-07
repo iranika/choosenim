@@ -193,7 +193,7 @@ test "can update self":
     when defined(windows): removeFile(commonFile)
     moveFile(commonFileOriginal, commonFile)
     
-    (output, exitCode) = exec(["update","self","--debug"], liveOutput=true)
+    (output, exitCode) = exec(["update", "self", "--debug"], liveOutput=true)
     check exitCode == QuitSuccess
     check inLines(output.processOutput, "Info: Updated choosenim to version")
 
