@@ -1,4 +1,7 @@
-import httpclient, strutils, os, terminal, times, math, json, uri
+import httpclient, strutils, os, osproc, terminal, times, json, uri
+
+when defined(macosx):
+  import math
 
 import nimblepkg/[version, cli]
 when defined(curl):
@@ -8,6 +11,7 @@ import cliparams, common, telemetry, utils
 
 const
   githubTagReleasesUrl = "https://api.github.com/repos/nim-lang/Nim/tags"
+  githubNightliesReleasesUrl = "https://api.github.com/repos/nim-lang/nightlies/releases"
   githubUrl = "https://github.com/nim-lang/Nim"
   websiteUrl = "http://nim-lang.org/download/nim-$1.tar.xz"
   csourcesUrl = "https://github.com/nim-lang/csources"
@@ -15,7 +19,7 @@ const
   binaryUrl = "http://nim-lang.org/download/nim-$1$2_x$3" & getBinArchiveFormat()
 
 const # Windows-only
-  mingwUrl = "http://nim-lang.org/download/mingw32.7z"
+  mingwUrl = "http://nim-lang.org/download/mingw$1.7z"
   dllsUrl = "http://nim-lang.org/download/dlls.zip"
 
 const
@@ -50,6 +54,15 @@ proc showBar(fraction: float, speed: BiggestInt) =
                   $(speed div 1000)
                 ])
   stdout.flushFile()
+
+proc addGithubAuthentication(url: string): string =
+  let ghtoken = getEnv("GITHUB_TOKEN")
+  if ghtoken == "":
+    return url
+  else:
+    display("Info:", "Using the 'GITHUB_TOKEN' environment variable for GitHub API Token.",
+            priority=HighPriority)
+    return url.replace("https://api.github.com", "https://" & ghtoken & "@api.github.com")
 
 when defined(curl):
   proc checkCurl(code: Code) =
@@ -197,27 +210,43 @@ proc needsDownload(params: CliParams, downloadUrl: string,
   ## The `outputPath` argument is filled with the valid download path.
   result = true
   outputPath = params.getDownloadPath(downloadUrl)
-  if outputPath.existsFile():
+  if outputPath.fileExists():
     # TODO: Verify sha256.
     display("Info:", "$1 already downloaded" % outputPath,
             priority=HighPriority)
     return false
 
+proc retrieveUrl*(url: string): string
 proc downloadImpl(version: Version, params: CliParams): string =
   let arch = getGccArch(params)
   if version.isSpecial():
-    let
-      commit = getLatestCommit(githubUrl, "devel")
-      archive = if commit.len != 0: commit else: "devel"
+    var reference, url = ""
+    if $version in ["#devel", "#head"] and not params.latest:
+      # Install nightlies by default for devel channel
+      try:
+        let rawContents = retrieveUrl(githubNightliesReleasesUrl.addGithubAuthentication())
+        let parsedContents = parseJson(rawContents)
+        url = getNightliesUrl(parsedContents, arch)
+        reference = "devel"
+      except HTTPRequestError:
+        # Unable to get nightlies release json from github API, fallback
+        # to `choosenim devel --latest`
+        display("Info:", "Nightlies build unavailable, building latest commit",
+                priority = HighPriority)
+
+    if url.len == 0:
+      let
+        commit = getLatestCommit(githubUrl, "devel")
+        archive = if commit.len != 0: commit else: "devel"
       reference =
         case normalize($version)
         of "#head":
           archive
         else:
           ($version)[1 .. ^1]
+      url = $(parseUri(githubUrl) / (dlArchive % reference))
     display("Downloading", "Nim $1 from $2" % [reference, "GitHub"],
             priority = HighPriority)
-    let url = $(parseUri(githubUrl) / (dlArchive % reference))
     var outputPath: string
     if not needsDownload(params, url, outputPath): return outputPath
 
@@ -269,13 +298,16 @@ proc downloadCSources*(params: CliParams): string =
   downloadFile(csourcesArchiveUrl, outputPath, params)
   return outputPath
 
-proc downloadMingw32*(params: CliParams): string =
+proc downloadMingw*(params: CliParams): string =
+  let
+    arch = getCpuArch()
+    url = mingwUrl % $arch
   var outputPath: string
-  if not needsDownload(params, mingwUrl, outputPath):
+  if not needsDownload(params, url, outputPath):
     return outputPath
 
-  display("Downloading", "C compiler (Mingw32)", priority = HighPriority)
-  downloadFile(mingwUrl, outputPath, params)
+  display("Downloading", "C compiler (Mingw$1)" % $arch, priority = HighPriority)
+  downloadFile(url, outputPath, params)
   return outputPath
 
 proc downloadDLLs*(params: CliParams): string =
@@ -322,8 +354,9 @@ proc retrieveUrl*(url: string): string =
 
     display("Curl", res, priority = DebugPriority)
 
-    doAssert responseCode == 200,
-             "Expected HTTP code $1 got $2 for $3" % [$200, $responseCode, url]
+    if responseCode != 200:
+      raise newException(HTTPRequestError,
+             "Expected HTTP code $1 got $2 for $3" % [$200, $responseCode, url])
 
     return res
   else:
@@ -332,7 +365,7 @@ proc retrieveUrl*(url: string): string =
     return client.getContent(url)
 
 proc getOfficialReleases*(params: CliParams): seq[Version] =
-  let rawContents = retrieveUrl(githubTagReleasesUrl)
+  let rawContents = retrieveUrl(githubTagReleasesUrl.addGithubAuthentication())
   let parsedContents = parseJson(rawContents)
   let cutOffVersion = newVersion("0.16.0")
 
@@ -343,6 +376,49 @@ proc getOfficialReleases*(params: CliParams): seq[Version] =
     if cutOffVersion <= version:
       releases.add(version)
   return releases
+
+template isDevel*(version: Version): bool =
+  $version in ["#head", "#devel"]
+
+proc gitUpdate*(version: Version, extractDir: string, params: CliParams): bool =
+  if version.isDevel() and params.latest:
+    let git = findExe("git")
+    if git.len != 0 and fileExists(extractDir / ".git" / "config"):
+      result = true
+
+      let lastDir = getCurrentDir()
+      setCurrentDir(extractDir)
+      defer:
+        setCurrentDir(lastDir)
+
+      display("Fetching", "latest changes", priority = HighPriority)
+      for cmd in [" fetch --all", " reset --hard origin/devel"]:
+        var (outp, errC) = execCmdEx(git.quoteShell & cmd)
+        if errC != QuitSuccess:
+          display("Warning:", "git" & cmd & " failed: " & outp, Warning, priority = HighPriority)
+          return false
+
+proc gitInit*(version: Version, extractDir: string, params: CliParams) =
+  createDir(extractDir / ".git")
+  if version.isDevel():
+    let git = findExe("git")
+    if git.len != 0:
+      let lastDir = getCurrentDir()
+      setCurrentDir(extractDir)
+      defer:
+        setCurrentDir(lastDir)
+
+      var init = true
+      display("Setting", "up git repository", priority = HighPriority)
+      for cmd in [" init", " remote add origin https://github.com/nim-lang/nim"]:
+        var (outp, errC) = execCmdEx(git.quoteShell & cmd)
+        if errC != QuitSuccess:
+          display("Warning:", "git" & cmd & " failed: " & outp, Warning, priority = HighPriority)
+          init = false
+          break
+
+      if init:
+        discard gitUpdate(version, extractDir, params)
 
 when isMainModule:
 

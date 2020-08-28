@@ -1,5 +1,27 @@
 # Choosenim changelog
 
+## 0.6.0 - 06/03/2020
+
+The major new feature is default installation of 64-bit Nim
+binaries on Windows.
+
+Changes:
+* Install latest nightly build of Nim on `choosenim devel` and
+  `choosenim update devel`
+* Install latest devel commit instead of nightlies with the
+  `--latest` flag
+* Git based update for `choosenim update devel --latest` instead
+  of deleting, downloading and bootstrapping from scratch
+* Optionally add `~/.nimble/bin` to PATH on Windows when using the
+  `--firstInstall` flag
+* Fix `choosenim update self` failure on Windows
+* Fix crash where shims could not be rewritten when in use
+* Fix crash on OSX due to an openssl version conflict
+
+See the full list of changes here:
+
+https://github.com/dom96/choosenim/compare/v0.5.1...v0.6.0
+
 ## 0.5.1 - 15/01/2020
 
 Includes multiple bug fixes and minor improvements.

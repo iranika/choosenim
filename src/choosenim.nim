@@ -9,23 +9,35 @@ from nimblepkg/packageinfo import getNameVersion
 import choosenimpkg/[download, builder, switcher, common, cliparams, versions]
 import choosenimpkg/[utils, channel, telemetry]
 
+when defined(windows):
+  import choosenimpkg/env
+
+  import times
+
 proc installVersion(version: Version, params: CliParams) =
-  # Install the requested version.
-  let path = download(version, params)
-  # Extract the downloaded file.
-  let extractDir = params.getInstallationDir(version)
-  # Make sure no stale files from previous installation exist.
-  removeDir(extractDir)
-  extract(path, extractDir)
-  # A "special" version is downloaded from GitHub and thus needs a `.git`
-  # directory in order to let `koch` know that it should download a "devel"
-  # Nimble.
-  if version.isSpecial:
-    createDir(extractDir / ".git")
+  let
+    extractDir = params.getInstallationDir(version)
+    updated = gitUpdate(version, extractDir, params)
+
+  if not updated:
+    # Install the requested version.
+    let path = download(version, params)
+    defer:
+      # Delete downloaded file
+      discard tryRemoveFile(path)
+    # Make sure no stale files from previous installation exist.
+    removeDir(extractDir)
+    # Extract the downloaded file.
+    extract(path, extractDir)
+
+    # A "special" version is downloaded from GitHub and thus needs a `.git`
+    # directory in order to let `koch` know that it should download a "devel"
+    # Nimble.
+    if version.isSpecial:
+      gitInit(version, extractDir, params)
+
   # Build the compiler
   build(extractDir, version, params)
-  # Delete downloaded file
-  discard tryRemoveFile(path)
 
 proc chooseVersion(version: string, params: CliParams) =
   # Command is a version.
@@ -35,7 +47,7 @@ proc chooseVersion(version: string, params: CliParams) =
   if params.needsCCInstall():
     when defined(windows):
       # Install MingW.
-      let path = downloadMingw32(params)
+      let path = downloadMingw(params)
       extract(path, getMingwPath(params))
     else:
       raise newException(ChooseNimError,
@@ -46,8 +58,23 @@ proc chooseVersion(version: string, params: CliParams) =
   when defined(windows):
     if params.needsDLLInstall():
       # Install DLLs.
-      let path = downloadDLLs(params)
-      extract(path, getBinDir(params))
+      let
+        path = downloadDLLs(params)
+        tempDir = getTempDir() / "choosenim-dlls"
+        binDir = getBinDir(params)
+      removeDir(tempDir)
+      createDir(tempDir)
+      extract(path, tempDir)
+      for kind, path in walkDir(tempDir, relative = true):
+        if kind == pcFile:
+          try:
+            if not fileExists(binDir / path) or
+              getLastModificationTime(binDir / path) < getLastModificationTime(tempDir / path):
+              moveFile(tempDir / path, binDir / path)
+              display("Info:", "Copied '$1' to '$2'" % [path, binDir], priority = HighPriority)
+          except:
+            discard
+      removeDir(tempDir)
 
   if not params.isVersionInstalled(version):
     installVersion(version, params)
@@ -69,11 +96,16 @@ proc choose(params: CliParams) =
     else:
       chooseVersion(params.command, params)
 
+  when defined(windows):
+    # Check and add ~/.nimble/bin to PATH
+    if not isNimbleBinInPath(params) and params.firstInstall:
+      setNimbleBinPath(params)
+
 proc updateSelf(params: CliParams) =
   display("Updating", "choosenim", priority = HighPriority)
 
   let version = getChannelVersion("self", params, live=true).newVersion
-  if version <= chooseNimVersion.newVersion:
+  if not params.force and version <= chooseNimVersion.newVersion:
     display("Info:", "Already up to date at version " & chooseNimVersion,
             Success, HighPriority)
     return

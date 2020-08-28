@@ -15,7 +15,8 @@ type
     nimbleOptions*: Options
     analytics*: AsyncAnalytics
     pendingReports*: int ## Count of pending telemetry reports.
-
+    force*: bool
+    latest*: bool
 
 let doc = """
 choosenim: The Nim toolchain installer.
@@ -31,13 +32,16 @@ Example:
   choosenim stable
     Installs (if necessary) Nim from the stable channel (latest stable release)
     and then selects it.
-  choosenim #head
-    Installs (if necessary) and selects the latest current commit of Nim.
-    Warning: Your shell may need quotes around `#head`: choosenim "#head".
+  choosenim devel [--latest]
+    Installs (if necessary) and selects the most recent nightly build of Nim.
+    The '--latest' flag selects and builds the latest commit in the devel branch
   choosenim ~/projects/nim
     Selects the specified Nim installation.
   choosenim update stable
     Updates the version installed on the stable release channel.
+  choosenim update devel [--latest]
+    Updates to the most recent nightly build of Nim.
+    The '--latest' flag updates and builds the latest commit in the devel branch
   choosenim versions [--installed]
     Lists the available versions of Nim that choosenim has access to.
 
@@ -56,6 +60,12 @@ Commands:
   versions  [--installed]        Lists available versions of Nim, passing
                                  `--installed` only displays versions that
                                  are installed locally (no network requests).
+
+Environment variables:
+  GITHUB_TOKEN          GitHub API Token. Some actions use the GitHub API.
+                        To avoid anonymous-access rate limits, supply a token
+                        generated at https://github.com/settings/tokens/new
+                        with the `public_repo` scope.
 
 Options:
   -h --help             Show this output.
@@ -99,8 +109,33 @@ proc getCurrentChannelFile*(params: CliParams): string =
 proc getAnalyticsFile*(params: CliParams): string =
   return params.chooseNimDir / "analytics"
 
+proc getCpuArch*(): int =
+  ## Get CPU arch on Windows - get env var PROCESSOR_ARCHITECTURE
+  var failMsg = ""
+
+  let
+    archEnv = getEnv("PROCESSOR_ARCHITECTURE")
+    arch6432Env = getEnv("PROCESSOR_ARCHITEW6432")
+  if arch6432Env.len != 0:
+    # https://blog.differentpla.net/blog/2013/03/10/processor-architew6432/
+    result = 64
+  elif "64" in archEnv:
+    # https://superuser.com/a/1441469
+    result = 64
+  elif "86" in archEnv:
+    result = 32
+  else:
+    failMsg = "PROCESSOR_ARCHITECTURE = " & archEnv &
+              ", PROCESSOR_ARCHITEW6432 = " & arch6432Env
+
+  # Die if unsupported - better fail than guess
+  if result == 0:
+    raise newException(ChooseNimError,
+      "Could not detect CPU architecture: " & failMsg)
+
 proc getMingwPath*(params: CliParams): string =
-  return params.getInstallDir() / "mingw32"
+  let arch = getCpuArch()
+  return params.getInstallDir() / "mingw" & $arch
 
 proc getMingwBin*(params: CliParams): string =
   return getMingwPath(params) / "bin"
@@ -168,6 +203,8 @@ proc parseCliParams*(params: var CliParams, proxyExeMode = false) =
       of "firstinstall": params.firstInstall = true
       of "y", "yes": params.nimbleOptions.forcePrompts = forcePromptYes
       of "installed": params.onlyInstalled = true
+      of "force", "f": params.force = true
+      of "latest", "l": params.latest = true
       else:
         if not proxyExeMode:
           raise newException(ChooseNimError, "Unknown flag: --" & key)
